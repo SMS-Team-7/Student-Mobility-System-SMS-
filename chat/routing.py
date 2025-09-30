@@ -1,7 +1,7 @@
-from django.urls import path
+from django.urls import re_path
 from . import consumers
 
 websocket_urlpatterns = [
-    path("ws/chat/", consumers.ChatConsumer.as_asgi()),
-    path("ws/driver-location/", consumers.DriverLocationConsumer.as_asgi()),
+    re_path(r'ws/chat/$', consumers.ChatConsumer.as_asgi()),
+    re_path(r'ws/driver-location/$', consumers.DriverLocationConsumer.as_asgi()),
 ]

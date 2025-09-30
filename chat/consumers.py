@@ -1,11 +1,7 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
-from .models import ChatMessage, DriverLocation
-from django.contrib.auth import get_user_model
-from driver.models import Driver
-
-User = get_user_model()
+from django.conf import settings
 
 # ------------------- Chat & WebRTC -------------------
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -30,7 +26,18 @@ class ChatConsumer(AsyncWebsocketConsumer):
         if action == "chat_message":
             receiver_id = data.get("receiver_id")
             message = data.get("message")
-            receiver = await database_sync_to_async(User.objects.get)(id=receiver_id)
+
+            # Lazy import models
+            ChatMessage = await database_sync_to_async(
+                lambda: __import__('chat.models', fromlist=['ChatMessage']).ChatMessage
+            )()
+            User = await database_sync_to_async(
+                lambda: __import__(settings.AUTH_USER_MODEL.split('.')[0],
+                                   fromlist=[settings.AUTH_USER_MODEL.split('.')[-1]])
+                .objects.get
+            )()
+
+            receiver = await database_sync_to_async(lambda: User.objects.get(id=receiver_id))()
             await database_sync_to_async(ChatMessage.objects.create)(
                 sender=self.user,
                 receiver=receiver,
@@ -43,7 +50,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 {"type": "chat.message", "message": message, "sender_id": self.user.id}
             )
 
-            # Send back to sender (confirmation)
+            # Send back to sender
             await self.send(text_data=json.dumps({
                 "action": "chat_message",
                 "message": message,
@@ -56,6 +63,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             target_id = data.get("target_id")
             payload_key = "offer" if action == "webrtc_offer" else "answer" if action == "webrtc_answer" else "candidate"
             payload = data.get(payload_key)
+
             await self.channel_layer.group_send(
                 f"user_{target_id}",
                 {"type": action, payload_key: payload, "sender_id": self.user.id}
@@ -70,25 +78,26 @@ class ChatConsumer(AsyncWebsocketConsumer):
         }))
 
     async def webrtc_offer(self, event):
-        await self.send(json.dumps({
+        await self.send(text_data=json.dumps({
             "action": "webrtc_offer",
             "offer": event["offer"],
             "sender_id": event["sender_id"]
         }))
 
     async def webrtc_answer(self, event):
-        await self.send(json.dumps({
+        await self.send(text_data=json.dumps({
             "action": "webrtc_answer",
             "answer": event["answer"],
             "sender_id": event["sender_id"]
         }))
 
     async def webrtc_ice_candidate(self, event):
-        await self.send(json.dumps({
+        await self.send(text_data=json.dumps({
             "action": "webrtc_ice_candidate",
             "candidate": event["candidate"],
             "sender_id": event["sender_id"]
         }))
+
 
 # ------------------- Driver Location -------------------
 class DriverLocationConsumer(AsyncWebsocketConsumer):
@@ -107,13 +116,19 @@ class DriverLocationConsumer(AsyncWebsocketConsumer):
         user = self.scope["user"]
 
         if user.is_authenticated:
-            driver = await database_sync_to_async(Driver.objects.get)(user=user)
+            DriverLocation = await database_sync_to_async(
+                lambda: __import__('chat.models', fromlist=['DriverLocation']).DriverLocation
+            )()
+            Driver = await database_sync_to_async(
+                lambda: __import__('driver.models', fromlist=['Driver']).Driver
+            )()
+
+            driver = await database_sync_to_async(lambda: Driver.objects.get(user=user))()
             await database_sync_to_async(DriverLocation.objects.update_or_create)(
                 driver=driver,
                 defaults={"latitude": latitude, "longitude": longitude}
             )
 
-            # Broadcast to all connected clients
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {
