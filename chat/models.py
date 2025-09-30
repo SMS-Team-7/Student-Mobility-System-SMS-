@@ -1,8 +1,9 @@
 from django.db import models
 from django.conf import settings
-from driver.models import Driver, Student
+from django.contrib.auth import get_user_model
+from driver.models import Driver
+User = get_user_model()
 
-User = settings.AUTH_USER_MODEL
 
 class ChatMessage(models.Model):
     sender = models.ForeignKey(User, related_name="sent_messages", on_delete=models.CASCADE)
