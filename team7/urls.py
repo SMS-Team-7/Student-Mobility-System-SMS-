@@ -24,7 +24,7 @@ urlpatterns = [
     
     path('daily-tasks/', include('task.urls')),   # ✅ clean and readable
 
-
+    path('chat/', include('chat.urls')),
     
     # API schema & documentation
     path("schema/", SpectacularAPIView.as_view(), name="schema"),
