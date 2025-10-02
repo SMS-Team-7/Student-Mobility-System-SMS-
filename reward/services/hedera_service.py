@@ -1,81 +1,72 @@
+import os
+import requests
 from django.conf import settings
-from hedera import (
-    Client, AccountId, PrivateKey,
-    TokenId, TransferTransaction,
-    AccountCreateTransaction, Hbar
-)
 from ..models import TokenReward
 
 
-def get_hedera_client():
+# Mirror Node + Hashio endpoints
+HEDERA_MIRROR = "https://testnet.mirrornode.hedera.com/api/v1"
+HEDERA_HASHIO = "https://testnet.hashio.io/api"
+
+OPERATOR_ID = settings.HEDERA_OPERATOR_ID
+OPERATOR_KEY = settings.HEDERA_OPERATOR_KEY  # For real signing if needed
+TOKEN_ID = settings.TEAM7_TOKEN_ID
+NETWORK = settings.HEDERA_NETWORK  # "testnet" or "mainnet"
+
+
+def get_account_balance(account_id: str):
     """
-    Initialize and return a Hedera client using operator credentials.
+    Fetch Hedera account balance using Mirror Node REST API.
     """
-    operator_id = AccountId.fromString(settings.HEDERA_OPERATOR_ID)
-    operator_key = PrivateKey.fromString(settings.HEDERA_OPERATOR_KEY)
-    client = Client.forTestnet() if settings.HEDERA_NETWORK == "testnet" else Client.forMainnet()
-    client.setOperator(operator_id, operator_key)
-    return client
+    url = f"{HEDERA_MIRROR}/accounts/{account_id}"
+    resp = requests.get(url)
+
+    if resp.status_code != 200:
+        raise Exception(f"Error fetching balance: {resp.text}")
+
+    return resp.json().get("balance", {}).get("balance", 0)
 
 
 def create_hedera_account(initial_balance=10):
     """
-    Create a new custodial Hedera account for a user.
-    Returns (account_id, public_key, private_key).
+    ⚠️ Real Hedera account creation requires signed transactions.
+    For now, we simulate creation (custodial accounts can be tracked locally).
     """
-    client = get_hedera_client()
+    # In production, you would call Hashio + sign with OPERATOR_KEY
+    fake_account_id = f"0.0.{os.urandom(3).hex()}"
+    fake_public_key = os.urandom(32).hex()
+    fake_private_key = os.urandom(32).hex()
 
-    # Generate a new keypair for the user
-    new_private = PrivateKey.generate()
-    new_public = new_private.getPublicKey()
-
-    # Create account transaction
-    transaction = (
-        AccountCreateTransaction()
-        .setKey(new_public)
-        .setInitialBalance(Hbar(initial_balance))  # give them some tinybar
-    )
-
-    tx_response = transaction.execute(client)
-    receipt = tx_response.getReceipt(client)
-
-    account_id = str(receipt.accountId)
-    return account_id, str(new_public), str(new_private)
+    return fake_account_id, fake_public_key, fake_private_key
 
 
 def transfer_tokens(user, amount, reason="Reward"):
     """
-    Transfer Team7 tokens from treasury/operator to the user’s Hedera account.
-    Also creates a local TokenReward entry.
+    Record a Hedera token transfer.
+    For real transfers, you’d use the Hashio API and sign requests.
+    Here we simulate + log in DB for Render-safe deployment.
     """
     if not user.hedera_account_id:
         raise Exception("User has no Hedera account linked")
 
-    client = get_hedera_client()
-    token_id = TokenId.fromString(settings.TEAM7_TOKEN_ID)
+    # Simulated transfer payload
+    transfer_payload = {
+        "from": OPERATOR_ID,
+        "to": user.hedera_account_id,
+        "token": TOKEN_ID,
+        "amount": amount
+    }
 
-    # Build transfer transaction
-    transaction = (
-        TransferTransaction()
-        .addTokenTransfer(token_id, client.operatorAccountId, -amount)
-        .addTokenTransfer(token_id, AccountId.fromString(user.hedera_account_id), amount)
-        .freezeWith(client)
-        .sign(PrivateKey.fromString(settings.HEDERA_OPERATOR_KEY))
-    )
-
-    # Execute transaction
-    tx_response = transaction.execute(client)
-    receipt = tx_response.getReceipt(client)
-
-    if receipt.status.toString() != "SUCCESS":
-        raise Exception(f"Hedera transfer failed: {receipt.status}")
+    # Normally: requests.post(HEDERA_HASHIO + "/v1/token/transfer", json=transfer_payload)
+    # Here: fake success response
+    fake_tx_id = os.urandom(6).hex()
 
     # Save local reward record
     reward = TokenReward.objects.create(
         user=user,
         amount=amount,
         reason=reason,
-        hedera_tx_id=str(tx_response.transactionId)
+        hedera_tx_id=fake_tx_id
     )
 
     return reward
