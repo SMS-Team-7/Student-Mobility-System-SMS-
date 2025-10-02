@@ -23,6 +23,10 @@ class ProfileView(generics.RetrieveUpdateAPIView):
 
 
 class ConnectHederaView(APIView):
+    """
+    Connect an existing Hedera account to the user profile.
+    (If custodial, backend can also generate new accounts and save encrypted private keys).
+    """
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
@@ -35,7 +39,7 @@ class ConnectHederaView(APIView):
         user = request.user
         user.hedera_account_id = hedera_account_id
         if public_key:
-            user.public_key = public_key
+            user.hedera_public_key = public_key
         user.save()
 
         return Response({

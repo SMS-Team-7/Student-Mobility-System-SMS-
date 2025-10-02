@@ -2,6 +2,7 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.utils import timezone
+from django.conf import settings
 
 # ---- Import models ----
 from driver.models import Driver, Student   # driver app
@@ -9,6 +10,12 @@ from .models import Ride, TokenReward       # ride app
 
 # ---- Import serializers ----
 from .serializers import RideSerializer, TokenRewardSerializer
+
+# ---- Import Hedera services ----
+from reward.services.hedera_service import (
+    transfer_tokens,
+    create_hedera_account,
+)
 
 
 # -------- Ride Booking --------
@@ -43,15 +50,28 @@ class BookRideView(APIView):
             dropoff_location=dropoff_location,
         )
 
-        # Reward student for booking
-        TokenReward.objects.create(
-            user=request.user,
-            ride=ride,
-            amount=5,
-            reason="Booked a ride"
-        )
+        # --- Ensure user has Hedera account (custodial) ---
+        if not request.user.hedera_account_id:
+            account_id, pub_key, priv_key = create_hedera_account()
+            request.user.hedera_account_id = account_id
+            request.user.hedera_public_key = pub_key
+            request.user.hedera_private_key_encrypted = priv_key  # ✅ corrected field
+            request.user.save()
 
-        return Response(RideSerializer(ride).data, status=201)
+        # 🎁 Reward student (on-chain + local)
+        try:
+            reward = transfer_tokens(
+                user=request.user,
+                amount=5,
+                reason=f"Booked ride #{ride.id}"
+            )
+        except Exception as e:
+            return Response({"error": f"Ride booked but reward failed: {str(e)}"}, status=500)
+
+        return Response({
+            "ride": RideSerializer(ride).data,
+            "reward": TokenRewardSerializer(reward).data
+        }, status=201)
 
 
 # -------- Complete Ride --------
@@ -76,15 +96,28 @@ class CompleteRideView(APIView):
         ride.completed_at = timezone.now()
         ride.save()
 
-        # Reward driver
-        TokenReward.objects.create(
-            user=request.user,
-            ride=ride,
-            amount=10,
-            reason="Completed ride on time"
-        )
+        # --- Ensure driver has Hedera account (custodial) ---
+        if not request.user.hedera_account_id:
+            account_id, pub_key, priv_key = create_hedera_account()
+            request.user.hedera_account_id = account_id
+            request.user.hedera_public_key = pub_key
+            request.user.hedera_private_key = priv_key
+            request.user.save()
 
-        return Response(RideSerializer(ride).data, status=200)
+        # 🎁 Reward driver (on-chain + local)
+        try:
+            reward = transfer_tokens(
+                user=request.user,
+                amount=10,
+                reason=f"Completed ride #{ride.id}"
+            )
+        except Exception as e:
+            return Response({"error": f"Ride completed but reward failed: {str(e)}"}, status=500)
+
+        return Response({
+            "ride": RideSerializer(ride).data,
+            "reward": TokenRewardSerializer(reward).data
+        }, status=200)
 
 
 # -------- Ride + Rewards Listing --------

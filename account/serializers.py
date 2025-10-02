@@ -15,10 +15,11 @@ class UserSerializer(serializers.ModelSerializer):
             "last_name",
             "role",
             "hedera_account_id",
-            "public_key",
+            "hedera_public_key",
         ]
-        read_only_fields = ["id", "hedera_account_id", "public_key"]
-        
+        read_only_fields = ["id", "hedera_account_id", "hedera_public_key"]
+
+
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
 
@@ -27,13 +28,14 @@ class RegisterSerializer(serializers.ModelSerializer):
         fields = ["username", "email", "password", "role"]
 
     def create(self, validated_data):
-        user = User.objects.create_user(
+        return User.objects.create_user(
             username=validated_data["username"],
             email=validated_data["email"],
             password=validated_data["password"],
             role=validated_data.get("role", "user"),
         )
-        return user
+
+
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField()
     password = serializers.CharField(write_only=True)
