@@ -20,3 +20,4 @@ websockets
 redis
 drf-spectacular
 hedera-sdk-py
+django-environ
