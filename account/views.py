@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .serializers import UserSerializer, RegisterSerializer
+from .serializers import UserSerializer, RegisterSerializer, ConnectHederaSerializer
 
 User = get_user_model()
 
@@ -25,16 +25,17 @@ class ProfileView(generics.RetrieveUpdateAPIView):
 class ConnectHederaView(APIView):
     """
     Connect an existing Hedera account to the user profile.
-    (If custodial, backend can also generate new accounts and save encrypted private keys).
+    ( backend can also generate new accounts and save encrypted private keys).
     """
     permission_classes = [permissions.IsAuthenticated]
+    serializer_class = ConnectHederaSerializer  # ✅ helps DRF schema generators
 
     def post(self, request):
-        hedera_account_id = request.data.get("hedera_account_id")
-        public_key = request.data.get("public_key")
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-        if not hedera_account_id:
-            return Response({"error": "hedera_account_id is required"}, status=400)
+        hedera_account_id = serializer.validated_data["hedera_account_id"]
+        public_key = serializer.validated_data.get("public_key")
 
         user = request.user
         user.hedera_account_id = hedera_account_id

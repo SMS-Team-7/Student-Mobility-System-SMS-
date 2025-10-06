@@ -39,3 +39,15 @@ class RegisterSerializer(serializers.ModelSerializer):
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField()
     password = serializers.CharField(write_only=True)
+
+
+
+# ✅ NEW — Serializer for ConnectHederaView
+class ConnectHederaSerializer(serializers.Serializer):
+    hedera_account_id = serializers.CharField(required=True)
+    public_key = serializers.CharField(required=False, allow_blank=True)
+
+    def validate_hedera_account_id(self, value):
+        if not value.strip():
+            raise serializers.ValidationError("hedera_account_id cannot be empty.")
+        return value
