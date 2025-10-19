@@ -51,3 +51,12 @@ class ConnectHederaSerializer(serializers.Serializer):
         if not value.strip():
             raise serializers.ValidationError("hedera_account_id cannot be empty.")
         return value
+ 
+ 
+    
+ #Serializer for QR code generation and scanning
+class QRGenerateSerializer(serializers.Serializer):
+        data = serializers.CharField(required=True)
+
+class QRScanSerializer(serializers.Serializer):
+    image = serializers.ImageField()   
