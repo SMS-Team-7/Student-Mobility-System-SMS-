@@ -3,6 +3,12 @@ from .models import Ride, TokenReward
 from driver.serializers import DriverSerializer, StudentSerializer
 from driver.models import Driver, Student
 
+from .models import Location
+
+class LocationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Location
+        fields = ["id", "ride", "role", "latitude", "longitude", "timestamp"]
 class RideSerializer(serializers.ModelSerializer):
     student = serializers.CharField(source="student.user.username", read_only=True)
     driver = serializers.CharField(source="driver.user.username", read_only=True)

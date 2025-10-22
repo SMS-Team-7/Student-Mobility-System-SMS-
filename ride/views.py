@@ -3,7 +3,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.utils import timezone
 from django.conf import settings
-
+from .models import Ride, Location
+from .serializers import LocationSerializer
+from .services.ai_tracker import analyze_driver_behavior
 # ---- Import models ----
 from driver.models import Driver, Student   # driver app
 from .models import Ride, TokenReward       # ride app
@@ -140,3 +142,43 @@ class TokenRewardListView(generics.ListAPIView):
 
     def get_queryset(self):
         return TokenReward.objects.filter(user=self.request.user)
+
+
+
+class LocationUpdateView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, ride_id):
+        role = request.data.get("role")  # "driver" or "student"
+        lat = request.data.get("latitude")
+        lon = request.data.get("longitude")
+
+        if not role or lat is None or lon is None:
+            return Response({"error": "Missing data"}, status=400)
+
+        try:
+            ride = Ride.objects.get(id=ride_id)
+        except Ride.DoesNotExist:
+            return Response({"error": "Ride not found"}, status=404)
+
+        location = Location.objects.create(
+            ride=ride,
+            role=role,
+            latitude=float(lat),
+            longitude=float(lon),
+        )
+        return Response(LocationSerializer(location).data, status=201)
+
+
+class RideMonitorView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, ride_id):
+        try:
+            ride = Ride.objects.get(id=ride_id)
+        except Ride.DoesNotExist:
+            return Response({"error": "Ride not found"}, status=404)
+
+        driver_locations = ride.locations.filter(role="driver").order_by("timestamp")[:20]
+        analysis = analyze_driver_behavior(driver_locations)
+        return Response(analysis, status=200)
