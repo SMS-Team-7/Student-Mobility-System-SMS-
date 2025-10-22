@@ -14,6 +14,8 @@ RUN apt-get update && apt-get install -y \
     curl \
     build-essential \
     ca-certificates \
+    libgl1 \
+    libglib2.0-0 \
     gnupg \
     && mkdir -p /usr/share/man/man1 \
     && apt-get install -y openjdk-21-jdk-headless\
