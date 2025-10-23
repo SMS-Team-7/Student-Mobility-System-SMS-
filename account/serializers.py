@@ -52,7 +52,12 @@ class ConnectHederaSerializer(serializers.Serializer):
             raise serializers.ValidationError("hedera_account_id cannot be empty.")
         return value
  
- 
+class OTPRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+class OTPVerifySerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    otp = serializers.CharField()
     
  #Serializer for QR code generation and scanning
 class QRGenerateSerializer(serializers.Serializer):

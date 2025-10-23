@@ -19,9 +19,18 @@ class User(AbstractUser):
     hedera_public_key = models.TextField(blank=True, null=True)
     hedera_private_key_encrypted = models.TextField(blank=True, null=True)
     # 🔒 store encrypted version of private key (don’t keep plain text!)
+    otp_secret = models.CharField(max_length=32, blank=True, null=True)
+    otp_created_at = models.DateTimeField(blank=True, null=True)
 
     def __str__(self):
         return f"{self.username} ({self.role})"
+
+    def otp_expired(self):
+        if not self.otp_created_at:
+            return True
+        return (timezone.now() - self.otp_created_at).seconds > 300 
+
+   
 
 
 # ----------------- TEMP LOGIN TOKEN -----------------

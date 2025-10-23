@@ -4,6 +4,16 @@ from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.conf import settings
+import pyotp
+
+from django.core.mail import send_mail
+from django.contrib.auth import get_user_model
+
+
+from rest_framework_simplejwt.tokens import RefreshToken
+from .serializers import OTPRequestSerializer, OTPVerifySerializer
+
+
 
 import io
 import qrcode
@@ -159,20 +169,76 @@ class OTPSetupView(APIView):
         })
 
 
-class OTPVerifySerializer(serializers.Serializer):
-    secret = serializers.CharField()
-    otp = serializers.CharField()
+
+# ---------- STEP 1: Request OTP ----------
+class OTPRequestView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = OTPRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"]
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response({"error": "No account found with this email"}, status=404)
+
+        # Generate or reuse OTP secret
+        if not user.otp_secret:
+            user.otp_secret = pyotp.random_base32()
+
+        totp = pyotp.TOTP(user.otp_secret)
+        otp = totp.now()
+
+        # Save timestamp
+        user.otp_created_at = timezone.now()
+        user.save()
+
+        # Send OTP via email
+        send_mail(
+            "Your Login OTP",
+            f"Your one-time password is: {otp}\n\nIt will expire in 5 minutes.",
+            "no-reply@myapp.com",
+            [user.email],
+        )
+
+        return Response({"message": "OTP sent to your email."}, status=200)
 
 
+# ---------- STEP 2: Verify OTP ----------
 class OTPVerifyView(APIView):
+    permission_classes = [permissions.AllowAny]
+
     def post(self, request):
         serializer = OTPVerifySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        secret = serializer.validated_data['secret']
-        otp = serializer.validated_data['otp']
+        email = serializer.validated_data["email"]
+        otp = serializer.validated_data["otp"]
 
-        totp = pyotp.TOTP(secret)
-        if totp.verify(otp):
-            return Response({"message": "OTP verified successfully"}, status=status.HTTP_200_OK)
-        return Response({"error": "Invalid or expired OTP"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response({"error": "Invalid email."}, status=404)
+
+        if user.otp_expired():
+            return Response({"error": "OTP expired. Request a new one."}, status=400)
+
+        totp = pyotp.TOTP(user.otp_secret)
+        if not totp.verify(otp):
+            return Response({"error": "Invalid OTP."}, status=400)
+
+        # ✅ Generate JWT token for user
+        refresh = RefreshToken.for_user(user)
+
+        # Optional: clear secret to prevent reuse
+        user.otp_secret = None
+        user.save()
+
+        return Response({
+            "message": "Login successful!",
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
+        }, status=200)
+
