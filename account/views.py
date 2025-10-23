@@ -35,6 +35,33 @@ from .models import TempLoginToken
 
 User = get_user_model()
 
+# ----------------- AUTH / LOGIN -----------------
+
+from .serializers import LoginSerializer
+
+class LoginView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = LoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data["user"]
+
+        # Generate JWT tokens
+        refresh = RefreshToken.for_user(user)
+
+        return Response({
+            "message": "Login successful",
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
+            "user": {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "role": user.role,
+            }
+        }, status=status.HTTP_200_OK)
+
 
 # ----------------- AUTH / PROFILE -----------------
 class RegisterView(generics.CreateAPIView):
