@@ -26,6 +26,8 @@ urlpatterns = [
 
     path('chat/', include('chat.urls')),
     
+    path('biometric/', include('bio.urls')),  # Biometric authentication endpoints
+    
     # API schema & documentation
     path("schema/", SpectacularAPIView.as_view(), name="schema"),
     path("swagger/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
