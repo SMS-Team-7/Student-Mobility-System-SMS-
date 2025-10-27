@@ -63,11 +63,27 @@ class LoginView(APIView):
         }, status=status.HTTP_200_OK)
 
 
-# ----------------- AUTH / PROFILE -----------------
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
     permission_classes = [permissions.AllowAny]
+
+    def perform_create(self, serializer):
+        user = serializer.save(is_active=False)  # user inactive until verified
+        user.otp_secret = pyotp.random_base32()
+
+        totp = pyotp.TOTP(user.otp_secret)
+        otp = totp.now()
+        user.otp_created_at = timezone.now()
+        user.save()
+
+        # Send OTP to email
+        send_mail(
+            "Verify Your Email - SMS",
+            f"Welcome to SMS!\n\nYour email verification code is: {otp}\nThis code will expire in 5 minutes.",
+            "olorunfemidaniel53@gmail.com",
+            [user.email],
+        )
 
 
 class ProfileView(generics.RetrieveUpdateAPIView):
@@ -79,8 +95,8 @@ class ProfileView(generics.RetrieveUpdateAPIView):
 
 
 class ConnectHederaView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-    serializer_class = ConnectHederaSerializer
+    permission_classes = [permissions.AllowAny]
+    serializer_class = ConnectHederaSerializer  # same serializer: expects hedera_account_id, public_key (optional)
 
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
@@ -89,16 +105,46 @@ class ConnectHederaView(APIView):
         hedera_account_id = serializer.validated_data["hedera_account_id"]
         public_key = serializer.validated_data.get("public_key")
 
-        user = request.user
-        user.hedera_account_id = hedera_account_id
-        if public_key:
-            user.hedera_public_key = public_key
-        user.save()
+        # 1️⃣ Check if user already exists
+        user = User.objects.filter(hedera_account_id=hedera_account_id).first()
+
+        if user:
+            # ✅ Existing user — log in
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                "message": "Login successful (via Hedera)",
+                "refresh": str(refresh),
+                "access": str(refresh.access_token),
+                "user": {
+                    "id": user.id,
+                    "email": user.email,
+                    "role": user.role,
+                    "hedera_account_id": user.hedera_account_id,
+                },
+            }, status=status.HTTP_200_OK)
+
+        # 2️⃣ If user doesn't exist — register new one
+        user = User.objects.create_user(
+            username=f"hedera_{hedera_account_id}",
+            email=f"{hedera_account_id}@hedera.local",  # placeholder email
+            is_active=True,
+            role="user",
+            hedera_account_id=hedera_account_id,
+            hedera_public_key=public_key or "",
+        )
+
+        refresh = RefreshToken.for_user(user)
 
         return Response({
-            "status": "linked",
-            "hedera_account_id": user.hedera_account_id
-        })
+            "message": "New Hedera account linked & user created.",
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
+            "user": {
+                "id": user.id,
+                "username": user.username,
+                "hedera_account_id": user.hedera_account_id,
+            },
+        }, status=status.HTTP_201_CREATED)
 
 
 # ----------------- QR CODE -----------------
@@ -233,7 +279,6 @@ class OTPRequestView(APIView):
         return Response({"message": "OTP sent to your email."}, status=200)
 
 
-# ---------- STEP 2: Verify OTP ----------
 class OTPVerifyView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -256,15 +301,15 @@ class OTPVerifyView(APIView):
         if not totp.verify(otp):
             return Response({"error": "Invalid OTP."}, status=400)
 
-        # ✅ Generate JWT token for user
-        refresh = RefreshToken.for_user(user)
-
-        # Optional: clear secret to prevent reuse
+        # ✅ Mark user as verified and activate account
+        user.is_active = True
         user.otp_secret = None
         user.save()
 
+        refresh = RefreshToken.for_user(user)
+
         return Response({
-            "message": "Login successful!",
+            "message": "Email verified successfully! You’re now logged in.",
             "refresh": str(refresh),
             "access": str(refresh.access_token),
         }, status=200)
