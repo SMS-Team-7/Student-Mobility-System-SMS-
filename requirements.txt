@@ -66,3 +66,4 @@ websockets==15.0.1
 whitenoise==6.11.0
 zope.interface==8.0.1
 fido2
+google-auth
