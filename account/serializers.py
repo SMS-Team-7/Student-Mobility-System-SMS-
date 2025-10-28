@@ -5,6 +5,8 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
+
+
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
     password = serializers.CharField(write_only=True)
@@ -16,7 +18,13 @@ class LoginSerializer(serializers.Serializer):
         if not email or not password:
             raise serializers.ValidationError("Both email and password are required.")
 
-        user = authenticate(username=email, password=password)
+        # get user by email
+        try:
+            user_obj = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise serializers.ValidationError("Invalid email or password.")
+
+        user = authenticate(username=user_obj.username, password=password)
         if not user:
             raise serializers.ValidationError("Invalid email or password.")
 
@@ -25,6 +33,7 @@ class LoginSerializer(serializers.Serializer):
 
         data["user"] = user
         return data
+
 
 
 class UserSerializer(serializers.ModelSerializer):
