@@ -10,7 +10,6 @@ class LocationSerializer(serializers.ModelSerializer):
         model = Location
         fields = ["id", "ride", "role", "latitude", "longitude", "timestamp"]
 class RideSerializer(serializers.ModelSerializer):
-    student = serializers.CharField(source="student.user.username", read_only=True)
     driver = serializers.CharField(source="driver.user.username", read_only=True)
 
     class Meta:
