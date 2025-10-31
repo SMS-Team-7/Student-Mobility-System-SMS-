@@ -22,9 +22,7 @@ Whether you’re:
 
 Booking or offering a ride,
 
-Buying or selling a textbook, or
-
-Completing an engagement task you earn tokens directly from the platform’s reward system, powered by Hedera Token Service (HTS).
+Buying or selling a textbook, or Completing an engagement task you earn tokens directly from the platform’s reward system, powered by Hedera Token Service (HTS).
 
 These tokens can be used, saved, or spent within the ecosystem — creating a loop of value that benefits everyone involved.
 
