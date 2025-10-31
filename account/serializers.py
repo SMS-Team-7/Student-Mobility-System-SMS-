@@ -46,6 +46,8 @@ class UserSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "role",
+            "display_name",
+            "profile_image",
             "hedera_account_id",
             "hedera_public_key",
         ]
@@ -95,3 +97,4 @@ class QRGenerateSerializer(serializers.Serializer):
 
 class QRScanSerializer(serializers.Serializer):
     image = serializers.ImageField()   
+    

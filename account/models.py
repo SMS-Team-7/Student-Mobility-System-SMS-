@@ -1,10 +1,13 @@
+# accounts/models.py or user/models.py
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils import timezone
 import uuid
 
+def user_profile_upload_path(instance, filename):
+    # each user's uploads go to: media/profiles/<username>/<filename>
+    return f"profiles/{instance.username}/{filename}"
 
-# ----------------- CUSTOM USER MODEL -----------------
 class User(AbstractUser):
     ROLE_CHOICES = (
         ("student", "Student"),
@@ -13,22 +16,23 @@ class User(AbstractUser):
     )
 
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="user")
+    display_name = models.CharField(max_length=100, blank=True, null=True)
+    profile_image = models.ImageField(upload_to=user_profile_upload_path, blank=True, null=True)
 
     # Hedera custodial fields
     hedera_account_id = models.CharField(max_length=100, blank=True, null=True)
     hedera_public_key = models.TextField(blank=True, null=True)
     hedera_private_key_encrypted = models.TextField(blank=True, null=True)
-    # 🔒 store encrypted version of private key (don’t keep plain text!)
     otp_secret = models.CharField(max_length=32, blank=True, null=True)
     otp_created_at = models.DateTimeField(blank=True, null=True)
 
     def __str__(self):
-        return f"{self.username} ({self.role})"
+        return self.display_name or self.username or f"User {self.id}"
 
     def otp_expired(self):
         if not self.otp_created_at:
             return True
-        return (timezone.now() - self.otp_created_at).seconds > 300 
+        return (timezone.now() - self.otp_created_at).seconds > 300
 
    
 
