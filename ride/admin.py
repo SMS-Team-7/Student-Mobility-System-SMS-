@@ -5,7 +5,7 @@ from .models import Ride, TokenReward, Location
 
 @admin.register(Ride)
 class RideAdmin(admin.ModelAdmin):
-    list_display = ("id", "student", "driver", "pickup_location", "dropoff_location", "status", "created_at", "completed_at")
+    list_display = ("id", "rider", "driver", "pickup_location", "dropoff_location", "status", "created_at", "completed_at")
     list_filter = ("status", "created_at")
     search_fields = ("student__user__username", "driver__user__username", "pickup_location", "dropoff_location")
     ordering = ("-created_at",)
