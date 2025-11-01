@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
@@ -73,6 +74,8 @@ export default defineConfig([
 ])
 ```
 =======
+=======
+>>>>>>> f589e8d516e70c15c6d58bd03007f3633b8eb43b
 # Student-Mobility-System-SMS
 
 A decentralized student service and mobility platform powered by Hedera.
@@ -139,4 +142,7 @@ and Strategy
 SMS bridges the gap between everyday student life and the digital economy.
 It’s simple, sustainable, and built for the next generation of connected campuses.
 By rewarding participation, we’re not just improving student life — we’re redefining it
+<<<<<<< HEAD
+>>>>>>> f589e8d516e70c15c6d58bd03007f3633b8eb43b
+=======
 >>>>>>> f589e8d516e70c15c6d58bd03007f3633b8eb43b
