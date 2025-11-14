@@ -79,6 +79,9 @@ SMS aims to create decentralized student economies where participation equals op
 Swagger Docs:
 [https://team-7-api.onrender.com/swagger/](https://team-7-api.onrender.com/swagger/)
 
+Live Demo:
+https://hedera-main2-goj7.vercel.app/
+
 ## Team
 
 Team 7 — Frontend, Backend, Design, Web3 Integration, and Strategy
