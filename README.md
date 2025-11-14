@@ -74,7 +74,7 @@ SMS aims to create decentralized student economies where participation equals op
 * RESTful API with Swagger documentation
 * Integrated task and reward modules
 
-## API Documentation
+## API Documentation & Live Demo
 
 Swagger Docs:
 [https://team-7-api.onrender.com/swagger/](https://team-7-api.onrender.com/swagger/)
