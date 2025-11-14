@@ -82,6 +82,9 @@ Swagger Docs:
 Live Demo:
 https://hedera-main2-goj7.vercel.app/
 
+Youtube video:
+https://youtu.be/7zN_Hl46-Z8?si=3SagWLUPCJ5FZBzD
+
 ## Team
 
 Team 7 — Frontend, Backend, Design, Web3 Integration, and Strategy
